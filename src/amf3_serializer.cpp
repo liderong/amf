@@ -10,6 +10,7 @@
 
 namespace ns_amf3
 {
+	/* Use correct types for x64 platforms, too */
 	class AMFObject_Sort
 	{
 	public:  
@@ -18,6 +19,7 @@ namespace ns_amf3
 			return a.getObject()->getObjectName()<b.getObject()->getObjectName();
 		}
 	};
+
 int64 swap_i64(int64 data)
 {
 	unsigned char buf[8];
@@ -299,16 +301,10 @@ void AMFObject::setAsUnsignedNumber(unsigned int num)
 }
 
 
-void AMFObject::initObject(const std::string& name,int num)
+void AMFObject::initObject(const std::string& name,double num)
 {
 	objectName_ = name;
-	setAsNumber(num);
-}
-
-void AMFObject::initObject(const std::string& name, bool bValue)
-{
-	objectName_ = name;
-	type_ = bValue?AMF3_TRUE:AMF3_FALSE;
+	setAsDouble(num);
 }
 
 void AMFObject::initObject(const std::string& name, const std::string &strValue )
@@ -318,26 +314,16 @@ void AMFObject::initObject(const std::string& name, const std::string &strValue 
 	stringValue_ = strValue;
 }
 
-void AMFObject::setAsNumber(int num)
+void AMFObject::initObject( const std::string& name, int num )
 {
-	if(num>0)
-	{
-		if(num<=0x0FFFFFFF)
-		{
-			type_ = AMF3_INTEGER;
-			intValue_ = num;
-		}
-		else
-		{
-			type_ = AMF3_DOUBLE;
-			doubleValue_ = (double)num;
-		}
-	}
-	else
-	{
-		type_ = AMF3_DOUBLE;
-		doubleValue_ = (double)num;
-	}
+	objectName_ = name;
+	setAsInt(num);
+}
+
+void AMFObject::initObject( const std::string& name, bool bValue )
+{
+	objectName_ = name;
+	type_ = bValue?AMF3_TRUE:AMF3_FALSE;
 }
 
 void AMFObject::addChild(const AmfObjectHandle& obj)
@@ -352,6 +338,46 @@ AmfObjectHandle AMFObject::addChild( const std::string& name, AMFDataType type )
 	obj->setType(type);
 	childrens_.push_back(obj);
 	return obj;
+}
+
+void AMFObject::addChild( const std::string& name, double value )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
+		return;
+	}
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(name,value);
+	childrens_.push_back(obj);
+}
+
+void AMFObject::addChild( const std::string& name, const std::string& strValue )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
+		return;
+	}
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(name,strValue);
+	childrens_.push_back(obj);
+}
+
+void AMFObject::addChild( const std::string& name, int value )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
+		return;
+	}
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(name,value);
+	childrens_.push_back(obj);
+}
+
+void AMFObject::addChild( const std::string& name, bool value )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
+		return;
+	}
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(name,value);
+	childrens_.push_back(obj);
 }
 
 bool AMFObject::hasChild(const char* name)
@@ -377,9 +403,37 @@ AmfObjectHandle AMFObject::getChild(const char* name)
 void AMFObject::sortChildByName()
 {
 	std::sort(childrens_.begin(),childrens_.end(),AMFObject_Sort());
-	for (int i=0; i<childrens_.size(); ++i) {
+	for (uint32 i=0; i<childrens_.size(); ++i) {
 		childrens_[i]->sortChildByName();
 	}
+}
+
+void AMFObject::setAsInt(int num )
+{
+	if(num>0)
+	{
+		if(num<=0x0FFFFFFF)
+		{
+			type_ = AMF3_INTEGER;
+			intValue_ = (int)num;
+		}
+		else
+		{
+			type_ = AMF3_DOUBLE;
+			doubleValue_ = (double)num;
+		}
+	}
+	else
+	{
+		type_ = AMF3_DOUBLE;
+		doubleValue_ = (double)num;
+	}
+}
+
+void AMFObject::setAsDouble( double num )
+{
+	type_ = AMF3_DOUBLE;
+	doubleValue_ = (double)num;
 }
 
 
@@ -403,7 +457,7 @@ bool is_refrence(int header)
 	return 0 == (header & REFERENCE_BIT);
 }
 
-AmfObjectHandle get_ref_tab(Amf_Ref_Vec_Type &tab,int idx)
+AmfObjectHandle get_ref_tab(Amf_Ref_Vec_Type &tab,uint32 idx)
 {
 	if(idx>=0 && idx<tab.size())
 		return tab[idx];
@@ -887,7 +941,7 @@ void write_array(AMFContext* ctx,AmfObjectHandle obj)
 	write_u29(ctx,objref);
 	
 	write_string(ctx,"");
-	for(int i=0;i<obj->childrens_.size();i++)
+	for(uint32 i=0;i<obj->childrens_.size();i++)
 	{
 		write_elem(ctx,obj->childrens_[i]);
 	}
@@ -899,7 +953,7 @@ void write_obj(AMFContext* ctx,AmfObjectHandle obj)
 	write_u29(ctx,objref);
 	write_string(ctx,"");
 
-	for(int i=0;i<obj->childrens_.size();i++)
+	for(uint32 i=0;i<obj->childrens_.size();i++)
 	{
 		write_string(ctx,obj->childrens_[i]->getObjectName());
 		write_elem(ctx,obj->childrens_[i]);

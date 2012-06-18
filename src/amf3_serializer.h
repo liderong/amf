@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include "platform.h"
 
 namespace ns_amf3
 {
@@ -94,6 +95,7 @@ protected:
 	AMFObject();
 	~AMFObject(void);
 public:
+	void initObject(const std::string& name, double num);
 	void initObject(const std::string& name, int num);
 	void initObject(const std::string& name, bool bValue);
 	void initObject(const std::string& name, const std::string& strValue);
@@ -109,7 +111,8 @@ public:
 
 	// 设置当前对象为number，并更新type
 	void setAsUnsignedNumber(unsigned int num);
-	void setAsNumber(int num);
+	void setAsInt(int num);
+	void setAsDouble(double num);
 
 	// 名称为name的孩子节点是否存在
 	bool hasChild(const char* name);
@@ -119,8 +122,10 @@ public:
 
 	// 添加子节点
 	void addChild(const AmfObjectHandle& obj);
-	template<typename T>
-	void addChild( const std::string& name, T value );
+	void addChild(const std::string& name, double value);
+	void addChild(const std::string& name, int value);
+	void addChild(const std::string& name, bool value);
+	void addChild(const std::string& name, const std::string& strValue);
 
 	// 根据指定的类型添加子节点返回节点指针进行后续的操作
 	AmfObjectHandle addChild(const std::string& name, AMFDataType type);
@@ -172,16 +177,6 @@ public:
 	std::vector<AmfObjectHandle> childrens_;
 };
 
-template<typename T>
-void ns_amf3::AMFObject::addChild( const std::string& name, T value )
-{
-	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
-		return;
-	}
-	AmfObjectHandle obj = AMFObject::Alloc();
-	obj->initObject(name,value);
-	childrens_.push_back(obj);
-}
 
 int read_data_callback(void* file,size_t size,unsigned char* buf);
 void write_data_callback(void* file,const unsigned char* buf,size_t size);
@@ -198,7 +193,7 @@ public:
 	Func_Read  readFunction_;
 	Func_Write writeFunction_;
 	unsigned char* readBuffer_;
-	int readBufferSize_;
+	uint32 readBufferSize_;
 	Amf_Ref_Vec_Type mReadObjectRefVec_;
 	Amf_Ref_Vec_Type mReadStrRefVec_;
 };
@@ -214,20 +209,20 @@ public:
 	void mallocBuffer(int length);
 	
 	unsigned char* getBuffer(int pos=0) const { return buffer_+pos;}
-	int getBufferLength() const { return bufferLength_;}
+	uint32 getBufferLength() const { return bufferLength_;}
 	
-	int getPos() const { return pos_;}
+	uint32 getPos() const { return pos_;}
 	void setPos(int pos) { pos_=pos;}
 	
 	void incrementPosition(int offset) { pos_ += offset;}
 
 	void write(const void * data, size_t bytes);
-	int getFreeSpace() const { return bufferLength_-pos_;}
-	void trimBuffer(int pos) { if(pos>bufferLength_) return; buffer_[pos]=0;}
+	uint32 getFreeSpace() const { return bufferLength_-pos_;}
+	void trimBuffer(uint32 pos) { if(pos>bufferLength_) return; buffer_[pos]=0;}
 private:
 	unsigned char* buffer_;
-	int bufferLength_;
-	int pos_;
+	uint32 bufferLength_;
+	uint32 pos_;
 };
 
 unsigned int DecodeHex(const char* pData,unsigned char* pOut,int inlen);
