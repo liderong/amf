@@ -300,30 +300,29 @@ void AMFObject::setAsUnsignedNumber(unsigned int num)
 	}
 }
 
-
-void AMFObject::initObject(const std::string& name,double num)
+void AMFObject::initObject( double num,const char* name/*=""*/ )
 {
 	objectName_ = name;
 	setAsDouble(num);
 }
 
-void AMFObject::initObject(const std::string& name, const std::string &strValue )
-{
-	objectName_ = name;
-	type_ = AMF3_STRING;
-	stringValue_ = strValue;
-}
-
-void AMFObject::initObject( const std::string& name, int num )
+void AMFObject::initObject( int num,const char* name/*=""*/ )
 {
 	objectName_ = name;
 	setAsInt(num);
 }
 
-void AMFObject::initObject( const std::string& name, bool bValue )
+void AMFObject::initObject( bool bValue,const char* name/*=""*/ )
 {
 	objectName_ = name;
 	type_ = bValue?AMF3_TRUE:AMF3_FALSE;
+}
+
+void AMFObject::initObject( const char* value,const char* name/*=""*/ )
+{
+	objectName_ = name;
+	type_ = AMF3_STRING;
+	stringValue_ = value;
 }
 
 void AMFObject::addChild(const AmfObjectHandle& obj)
@@ -331,53 +330,49 @@ void AMFObject::addChild(const AmfObjectHandle& obj)
 	childrens_.push_back(obj);
 }
 
-AmfObjectHandle AMFObject::addChild( const std::string& name, AMFDataType type )
+void AMFObject::addChild( double value, const char* name/*=""*/ )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT)
+		assert(false);
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(value,name);
+	childrens_.push_back(obj);
+}
+
+void AMFObject::addChild( int value, const char* name/*=""*/ )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT)
+		assert(false);
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(value,name);
+	childrens_.push_back(obj);
+}
+
+void AMFObject::addChild( bool value, const char* name/*=""*/ )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT)
+		assert(false);
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(value,name);
+	childrens_.push_back(obj);
+}
+
+void AMFObject::addChild(const char* strValue, const char* name/*=""*/ )
+{
+	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT)
+		assert(false);
+	AmfObjectHandle obj = AMFObject::Alloc();
+	obj->initObject(strValue,name);
+	childrens_.push_back(obj);
+}
+
+ns_amf3::AmfObjectHandle AMFObject::addChild( AMFDataType type,const char* name/*=""*/ )
 {
 	AmfObjectHandle obj = AMFObject::Alloc();
 	obj->setObjectName(name);
 	obj->setType(type);
 	childrens_.push_back(obj);
 	return obj;
-}
-
-void AMFObject::addChild( const std::string& name, double value )
-{
-	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
-		return;
-	}
-	AmfObjectHandle obj = AMFObject::Alloc();
-	obj->initObject(name,value);
-	childrens_.push_back(obj);
-}
-
-void AMFObject::addChild( const std::string& name, const std::string& strValue )
-{
-	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
-		return;
-	}
-	AmfObjectHandle obj = AMFObject::Alloc();
-	obj->initObject(name,strValue);
-	childrens_.push_back(obj);
-}
-
-void AMFObject::addChild( const std::string& name, int value )
-{
-	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
-		return;
-	}
-	AmfObjectHandle obj = AMFObject::Alloc();
-	obj->initObject(name,value);
-	childrens_.push_back(obj);
-}
-
-void AMFObject::addChild( const std::string& name, bool value )
-{
-	if(type_!=AMF3_ARRAY && type_!=AMF3_OBJECT){
-		return;
-	}
-	AmfObjectHandle obj = AMFObject::Alloc();
-	obj->initObject(name,value);
-	childrens_.push_back(obj);
 }
 
 bool AMFObject::hasChild(const char* name)
@@ -908,7 +903,27 @@ void write_double(AMFContext* ctx,double data)
 	::memcpy(&tmp,&data,8);
 	write_u64(ctx,tmp);
 }
+std::string OEM_2_UTF8(const char* oem)
+{
+	if(oem==0) return "";
 
+	int wlen = ::MultiByteToWideChar(CP_OEMCP,0,oem,-1,0,0);
+	wchar_t* wbuf = new wchar_t[wlen+1];
+	::MultiByteToWideChar(CP_OEMCP,0,oem,-1,wbuf,wlen);
+	wbuf[wlen] = L'0';
+
+	int clen = ::WideCharToMultiByte(CP_UTF8,0,wbuf,-1,0,0,0,0);
+	char* cbuf = new char[clen+1];
+	::WideCharToMultiByte(CP_UTF8,0,wbuf,-1,cbuf,clen,0,0);
+	cbuf[clen] = '\0';
+
+	std::string str = cbuf;
+
+	delete wbuf;
+	delete cbuf;
+
+	return str;
+}
 void write_string(AMFContext* ctx,std::string str)
 {
 	//str = OEM_2_UTF8(str.c_str());

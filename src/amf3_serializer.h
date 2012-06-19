@@ -95,14 +95,24 @@ protected:
 	AMFObject();
 	~AMFObject(void);
 public:
-	void initObject(const std::string& name, double num);
-	void initObject(const std::string& name, int num);
-	void initObject(const std::string& name, bool bValue);
-	void initObject(const std::string& name, const std::string& strValue);
+	//更新节点状态为相应的数值，并设置节点类型,默认节点名称为空
+	void initObject(double num,const char* name="");
+	void initObject(int num,const char* name="");
+	void initObject(bool bValue,const char* name="");
+	void initObject(const char* value,const char* name="");
+
+	// 添加子节点
+	// 根据指定的类型添加子节点返回节点指针进行后续的操作
+	AmfObjectHandle addChild(AMFDataType type,const char* name="");
+	void addChild(const AmfObjectHandle& obj);
+	void addChild(double value, const char* name="");
+	void addChild(int value, const char* name="");
+	void addChild(bool value, const char* name="");
+	void addChild(const char* strValue, const char* name="");
 
 	// date相关操作
 	double getTimeSeed();
-	void setTimeSeed(double t);
+	void   setTimeSeed(double t);
 
 	// 重置状态,并不删除子对象
 	void clearValue();
@@ -116,19 +126,9 @@ public:
 
 	// 名称为name的孩子节点是否存在
 	bool hasChild(const char* name);
-
 	// 获取名称为name的孩子节点,字符串比较区分大小写
 	AmfObjectHandle getChild(const char* name);
 
-	// 添加子节点
-	void addChild(const AmfObjectHandle& obj);
-	void addChild(const std::string& name, double value);
-	void addChild(const std::string& name, int value);
-	void addChild(const std::string& name, bool value);
-	void addChild(const std::string& name, const std::string& strValue);
-
-	// 根据指定的类型添加子节点返回节点指针进行后续的操作
-	AmfObjectHandle addChild(const std::string& name, AMFDataType type);
 
 	AMFDataType getType() const { return type_;}
 	void setType(AMFDataType type) { type_ = type;}
@@ -164,11 +164,11 @@ public:
 protected:
 	std::string objectName_; 
 	std::string stringValue_;
+	std::string className_;
 	double doubleValue_; 
 	int intValue_;
 	bool boolValue_;
 	AMFDataType type_;
-	std::string className_;
 	//SYSTEMTIME dateValue;
 	int byteArrayLength_;
 	unsigned char* byteArrayValue_;
