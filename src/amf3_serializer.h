@@ -7,6 +7,7 @@
 //  {a:"123",b:[1,"2",0.3],c:"汉字"}
 //   ns_amf3::AmfObjectHandle amf= ns_amf3::AMFObject::Alloc();
 //   amf->setType(ns_amf3::AMF3_OBJECT);
+//   amf->setClassName("test_class_name");
 //   amf->addChild("123","a");
 //	 ns_amf3::AmfObjectHandle child_array = amf->addChild(ns_amf3::AMF3_ARRAY,"b");
 //   child_array->addChild(1);
@@ -26,14 +27,22 @@
 //   解析得到的数据在obj中
 // 
 //   2011-06-18  修复中文编码乱码问题
+//   2011-06-28  添加对object的classname支持，添加object类型的时候采用如下方式设置class名
+//               区别于obejctname
+//			     ns_amf3::AmfObjectHandle amf= ns_amf3::AMFObject::Alloc();
+//				 amf->setType(ns_amf3::AMF3_OBJECT);
+//				 amf->setClassName("test_class_name");
+//               解码后首先判断类型，如果是object，则可通过getClassName取得类型名
 //////////////////////////////////////////////////////////////////////
 
 #ifndef AMF3_H__
 #define AMF3_H__
 
+#include "platform.h"
 #include <string>
 #include <vector>
-#include "platform.h"
+using std::string;
+using std::vector;
 
 namespace ns_amf3
 {
@@ -41,205 +50,206 @@ namespace ns_amf3
 #define REFERENCE_BIT	0x01              //引用标志位
 #define EMPTY_STRING	0x01              //空串
 
-//IO 读写函数
-typedef int  (*Func_Read)(void* file,size_t size,unsigned char* buf);
-typedef void (*Func_Write)(void* file,const unsigned char* buf,size_t size);
+	//IO 读写函数
+	typedef int  (*Func_Read)(void* file,size_t size,unsigned char* buf);
+	typedef void (*Func_Write)(void* file,const unsigned char* buf,size_t size);
 
-//数据类型定义
-enum AMFDataType
-{
-	AMF3_UNDEFINED  = 0x00,	  //unsupport
-	AMF3_NULL       = 0x01,
-	AMF3_FALSE      = 0x02,
-	AMF3_TRUE       = 0x03,
-	AMF3_INTEGER    = 0x04,
-	AMF3_DOUBLE     = 0x05,
-	AMF3_STRING     = 0x06,
-	AMF3_XMLDOC     = 0x07,	  //unsupport
-	AMF3_DATE       = 0x08,
-	AMF3_ARRAY      = 0x09,
-	AMF3_OBJECT     = 0x0A,
-	AMF3_XML        = 0x0B,	  //unsupport
-	AMF3_BYTEARRAY  = 0x0C		
-};
+	//数据类型定义
+	enum AMFDataType
+	{
+		AMF3_UNDEFINED  = 0x00,	  //unsupport
+		AMF3_NULL       = 0x01,
+		AMF3_FALSE      = 0x02,
+		AMF3_TRUE       = 0x03,
+		AMF3_INTEGER    = 0x04,
+		AMF3_DOUBLE     = 0x05,
+		AMF3_STRING     = 0x06,
+		AMF3_XMLDOC     = 0x07,	  //unsupport
+		AMF3_DATE       = 0x08,
+		AMF3_ARRAY      = 0x09,
+		AMF3_OBJECT     = 0x0A,
+		AMF3_XML        = 0x0B,	  //unsupport
+		AMF3_BYTEARRAY  = 0x0C		
+	};
 
-class AMFObject;
+	class AMFObject;
 
-//----------------------------------------------------------
-//obj handle 用于object的引用计数自动加减
-class AmfObjectHandle
-{
-public:
-	AmfObjectHandle();
-	AmfObjectHandle(const AmfObjectHandle &rhs);
-	AmfObjectHandle(AMFObject* obj);
-	~AmfObjectHandle(void);
+	//----------------------------------------------------------
+	//obj handle 用于object的引用计数自动加减
+	class AmfObjectHandle
+	{
+	public:
+		AmfObjectHandle();
+		AmfObjectHandle(const AmfObjectHandle &rhs);
+		AmfObjectHandle(AMFObject* obj);
+		~AmfObjectHandle(void);
 
-	bool isNULL();
-	void release();
+		bool isNULL();
+		void release();
 
-	AmfObjectHandle& operator=(const AmfObjectHandle &rhs);
-	AmfObjectHandle& operator=(AMFObject* obj);
-	bool operator==(const AmfObjectHandle &rhs) const;
+		AmfObjectHandle& operator=(const AmfObjectHandle &rhs);
+		AmfObjectHandle& operator=(AMFObject* obj);
+		bool operator==(const AmfObjectHandle &rhs) const;
 
-	// 优先使用->操作
-	AMFObject* operator->() const;
-	AMFObject* getObject() const { return pObject_;}
-private:
-	AMFObject* pObject_;
-};
+		// 优先使用->操作
+		AMFObject* operator->() const;
+		AMFObject* getObject() const { return pObject_;}
+	private:
+		AMFObject* pObject_;
+	};
 
-typedef std::vector<AmfObjectHandle> Amf_Ref_Vec_Type;
+	typedef std::vector<AmfObjectHandle> Amf_Ref_Vec_Type;
 
-//------------------------------------------------------
-//AMFObject 元素数据对象
-class AMFObject
-{
-	friend class AmfObjectHandle;
-public:
-	static AmfObjectHandle Alloc();
-	void add_ref();
-	void release();
+	//------------------------------------------------------
+	//AMFObject 元素数据对象
+	class AMFObject
+	{
+		friend class AmfObjectHandle;
+	public:
+		static AmfObjectHandle Alloc();
+		void add_ref();
+		void release();
 
-protected:
-	AMFObject();
-	~AMFObject(void);
-public:
-	//更新节点状态为相应的数值，并设置节点类型,默认节点名称为空
-	void initObject(double num,const char* name="");
-	void initObject(int num,const char* name="");
-	void initObject(bool bValue,const char* name="");
-	void initObject(const char* value,const char* name="");
+	protected:
+		AMFObject();
+		~AMFObject(void);
+	public:
+		//更新节点状态为相应的数值，并设置节点类型,默认节点名称为空
+		void initObject(double num,const char* name="");
+		void initObject(int num,const char* name="");
+		void initObject(bool bValue,const char* name="");
+		void initObject(const char* value,const char* name="");
 
-	// 添加子节点
-	// 根据指定的类型添加子节点返回节点指针进行后续的操作
-	AmfObjectHandle addChild(AMFDataType type,const char* name="");
-	void addChild(const AmfObjectHandle& obj);
-	void addChild(double value, const char* name="");
-	void addChild(int value, const char* name="");
-	void addChild(bool value, const char* name="");
-	void addChild(const char* strValue, const char* name="");
-
-	// date相关操作
-	double getTimeSeed();
-	void   setTimeSeed(double t);
-
-	// 重置状态,并不删除子对象
-	void clearValue();
-	// 重置状态，删除子对象
-	void clearValueWithChildren();
-
-	// 设置当前对象为number，并更新type
-	void setAsUnsignedNumber(unsigned int num);
-	void setAsInt(int num);
-	void setAsDouble(double num);
-
-	// 名称为name的孩子节点是否存在
-	bool hasChild(const char* name);
-	// 获取名称为name的孩子节点,字符串比较区分大小写
-	AmfObjectHandle getChild(const char* name);
+		// 添加子节点
+		// 根据指定的类型添加子节点返回节点指针进行后续的操作
+		AmfObjectHandle addChildWithType(AMFDataType type,const char* name="");
+		void addChild(const AmfObjectHandle& obj);
+		void addChild(const char* strValue, const char* name="");
+		void addChild(double value, const char* name="");
+		void addChild(int value, const char* name="");
+		void addChild(bool value, const char* name="");
 
 
-	AMFDataType getType() const { return type_;}
-	void setType(AMFDataType type) { type_ = type;}
+		// date相关操作
+		double getTimeSeed();
+		void   setTimeSeed(double t);
 
-	void setStringValue(std::string& value) { stringValue_ = value;}
-	std::string& getStringValue() { return stringValue_;}
-	
-	std::string& getObjectName() { return objectName_;}
-	void setObjectName(const std::string& name) { objectName_ = name;}
-	
-	int getIntValue() const { return intValue_;}
-	void setIntValue(int value) { intValue_ = value;}
-	
-	double getDoubleValue()const { return doubleValue_;}
-	void setDoubleValue(double value) { doubleValue_ = value;}
-	
-	bool getBoolValue() const { return boolValue_;}
-	void setBoolValue(bool bValue) { boolValue_ = bValue;}
+		// 重置状态,并不删除子对象
+		void clearValue();
+		// 重置状态，删除子对象
+		void clearValueWithChildren();
 
-	std::string& getClassName() { return className_;}
-	void setClassName(std::string& name) {className_ = name;}
+		// 设置当前对象为number，并更新type
+		void setAsUnsignedNumber(unsigned int num);
+		void setAsInt(int num);
+		void setAsDouble(double num);
 
-	int getByteArrayLength() const { return byteArrayLength_;}
-	void setByteArrayLength(int length) { byteArrayLength_ = length;}
-
-	unsigned char* getByteArrayValue() const { return byteArrayValue_;}
-	void setByteArrayValue(unsigned char* value) { byteArrayValue_ = value;}
-
-	int getChildrenCount() const { return childrens_.size();}
-
-	// 根据节点名称排序，主要是为了显示方便，一般不需要调用此方法
-	void sortChildByName();
-protected:
-	std::string objectName_; 
-	std::string stringValue_;
-	std::string className_;
-	double doubleValue_; 
-	int intValue_;
-	bool boolValue_;
-	AMFDataType type_;
-	//SYSTEMTIME dateValue;
-	int byteArrayLength_;
-	unsigned char* byteArrayValue_;
-	long reference_;
-public:
-	std::vector<AmfObjectHandle> childrens_;
-};
+		// 名称为name的孩子节点是否存在
+		bool hasChild(const char* name);
+		// 获取名称为name的孩子节点,字符串比较区分大小写
+		AmfObjectHandle getChild(const char* name);
 
 
-int read_data_callback(void* file,size_t size,unsigned char* buf);
-void write_data_callback(void* file,const unsigned char* buf,size_t size);
+		AMFDataType getType() const { return type_;}
+		void setType(AMFDataType type) { type_ = type;}
 
-///////////////////////////////////////////////////////////////////////////////
-class AMFContext
-{
-public:
-	AMFContext(Func_Read pRFunc=read_data_callback,Func_Write pWFunc=write_data_callback);
-	~AMFContext();
-public:
-	void* inBufferHandle_;
-	void* outBufferHandle_;
-	Func_Read  readFunction_;
-	Func_Write writeFunction_;
-	unsigned char* readBuffer_;
-	uint32 readBufferSize_;
-	Amf_Ref_Vec_Type mReadObjectRefVec_;
-	Amf_Ref_Vec_Type mReadStrRefVec_;
-};
+		void setStringValue(std::string& value) { stringValue_ = value;}
+		std::string& getStringValue() { return stringValue_;}
 
-class IOBufferHelper
-{
-public:
-	IOBufferHelper() : buffer_(NULL),bufferLength_(0),pos_(0){}
-	~IOBufferHelper();
+		std::string& getObjectName() { return objectName_;}
+		void setObjectName(const std::string& name) { objectName_ = name;}
 
-	void initFromBuffer(void* buffer,int length);
-	void initFromString(const std::string& str);
-	void mallocBuffer(int length);
-	
-	unsigned char* getBuffer(int pos=0) const { return buffer_+pos;}
-	uint32 getBufferLength() const { return bufferLength_;}
-	
-	uint32 getPos() const { return pos_;}
-	void setPos(int pos) { pos_=pos;}
-	
-	void incrementPosition(int offset) { pos_ += offset;}
+		int getIntValue() const { return intValue_;}
+		void setIntValue(int value) { intValue_ = value;}
 
-	void write(const void * data, size_t bytes);
-	uint32 getFreeSpace() const { return bufferLength_-pos_;}
-	void trimBuffer(uint32 pos) { if(pos>bufferLength_) return; buffer_[pos]=0;}
-private:
-	unsigned char* buffer_;
-	uint32 bufferLength_;
-	uint32 pos_;
-};
+		double getDoubleValue()const { return doubleValue_;}
+		void setDoubleValue(double value) { doubleValue_ = value;}
 
-unsigned int DecodeHex(const char* pData,unsigned char* pOut,int inlen);
-void DecodeHex(IOBufferHelper* io, const char* pData);
+		bool getBoolValue() const { return boolValue_;}
+		void setBoolValue(bool bValue) { boolValue_ = bValue;}
 
-AmfObjectHandle g_decode(void* inBuffer);
-void g_encode(void* outBuffer,AmfObjectHandle& obj);
+		std::string& getClassName() { return className_;}
+		void setClassName(const std::string& name) {className_ = name;}
+
+		int getByteArrayLength() const { return byteArrayLength_;}
+		void setByteArrayLength(int length) { byteArrayLength_ = length;}
+
+		unsigned char* getByteArrayValue() const { return byteArrayValue_;}
+		void setByteArrayValue(unsigned char* value) { byteArrayValue_ = value;}
+
+		int getChildrenCount() const { return childrens_.size();}
+
+		// 根据节点名称排序，主要是为了显示方便，一般不需要调用此方法
+		void sortChildByName();
+	protected:
+		std::string objectName_; 
+		std::string stringValue_;
+		std::string className_;
+		double doubleValue_; 
+		int intValue_;
+		bool boolValue_;
+		AMFDataType type_;
+		//SYSTEMTIME dateValue;
+		int byteArrayLength_;
+		unsigned char* byteArrayValue_;
+		long reference_;
+	public:
+		std::vector<AmfObjectHandle> childrens_;
+	};
+
+
+	int read_data_callback(void* file,size_t size,unsigned char* buf);
+	void write_data_callback(void* file,const unsigned char* buf,size_t size);
+
+	///////////////////////////////////////////////////////////////////////////////
+	class AMFContext
+	{
+	public:
+		AMFContext(Func_Read pRFunc=read_data_callback,Func_Write pWFunc=write_data_callback);
+		~AMFContext();
+	public:
+		void* inBufferHandle_;
+		void* outBufferHandle_;
+		Func_Read  readFunction_;
+		Func_Write writeFunction_;
+		unsigned char* readBuffer_;
+		uint32 readBufferSize_;
+		Amf_Ref_Vec_Type mReadObjectRefVec_;
+		Amf_Ref_Vec_Type mReadStrRefVec_;
+	};
+
+	class IOBufferHelper
+	{
+	public:
+		IOBufferHelper() : buffer_(NULL),bufferLength_(0),pos_(0){}
+		~IOBufferHelper();
+
+		void initFromBuffer(void* buffer,int length);
+		void initFromString(const std::string& str);
+		void mallocBuffer(int length);
+
+		unsigned char* getBuffer(int pos=0) const { return buffer_+pos;}
+		uint32 getBufferLength() const { return bufferLength_;}
+
+		uint32 getPos() const { return pos_;}
+		void setPos(int pos) { pos_=pos;}
+
+		void incrementPosition(int offset) { pos_ += offset;}
+
+		void write(const void * data, size_t bytes);
+		uint32 getFreeSpace() const { return bufferLength_-pos_;}
+		void trimBuffer(uint32 pos) { if(pos>bufferLength_) return; buffer_[pos]=0;}
+	private:
+		unsigned char* buffer_;
+		uint32 bufferLength_;
+		uint32 pos_;
+	};
+
+	unsigned int DecodeHex(const char* pData,unsigned char* pOut,int inlen);
+	void DecodeHex(IOBufferHelper* io, const char* pData);
+
+	AmfObjectHandle g_decode(void* inBuffer);
+	void g_encode(void* outBuffer,AmfObjectHandle& obj);
 
 }//end namespace ns_amf3
 #endif
